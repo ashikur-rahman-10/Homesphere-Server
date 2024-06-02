@@ -39,13 +39,13 @@ async function run() {
             if (existingUser) {
                 return res.send({ message: "user already exist" })
             }
-            const result = await usersCollections.insertOne(user);
+            const result = await userCollections.insertOne(user);
             res.send(result)
         })
 
         // Get All Users
         app.get('/users', async (req, res) => {
-            const result = await usersCollections.find().toArray()
+            const result = await userCollections.find().toArray()
             res.send(result)
         })
 
@@ -53,7 +53,7 @@ async function run() {
         app.get('/users/:email', async (req, res) => {
             const email = req.params.email;
             const filter = { email: email };
-            const result = await usersCollections.findOne(filter)
+            const result = await userCollections.findOne(filter)
             res.send(result)
         })
 
