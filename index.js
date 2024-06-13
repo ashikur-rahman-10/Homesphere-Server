@@ -5,7 +5,12 @@ const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const app = express()
 const port = process.env.PORT || 5000;
 
-app.use(cors())
+
+app.use(cors({
+    origin: ['http://localhost:5173', 'https://homesphere-0.web.app'],
+}));
+
+// app.use(cors());
 app.use(express.json())
 
 app.get('/', (req, res) => {
@@ -119,6 +124,38 @@ async function run() {
         // Get blog
         app.get('/blogs', async (req, res) => {
             const result = await blogsCollections.find().toArray();
+            res.send(result)
+        })
+
+        // Delete a blog
+        app.delete('/blogs/:id', async (req, res) => {
+            const id = req.params.id;
+            const filter = { _id: new ObjectId(id) }
+            const result = await blogsCollections.deleteOne(filter)
+            res.send(result)
+        })
+
+
+        // Update a blog
+        app.patch('/blogs/:id', async (req, res) => {
+            const id = req.params.id;
+            const updateBlog = req.body
+            const filter = { _id: new ObjectId(id) }
+            const updateDoc = {
+                $set: {
+                    title: updateBlog?.title,
+                    content: updateBlog?.content
+                }
+            }
+            const result = await blogsCollections.updateOne(filter, updateDoc)
+            res.send(result)
+        })
+
+        // Get blogs by id
+        app.get('/blogs/:id', async (req, res) => {
+            const id = req.params.id
+            const filter = { _id: new ObjectId(id) }
+            const result = await blogsCollections.findOne(filter)
             res.send(result)
         })
 
