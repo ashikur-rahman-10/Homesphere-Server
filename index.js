@@ -108,11 +108,44 @@ async function run() {
 
         // Get Apartment by id
         app.get('/apartments/:id', async (req, res) => {
-            const id = req.params
+            const id = req.params.id
             const filter = { _id: new ObjectId(id) }
             const result = await apartmentCollections.findOne(filter)
             res.send(result)
         })
+        // Get Apartment by email
+        app.get('/apartments/email/:email', async (req, res) => {
+            const email = req.params.email;
+            const filter = { "soldBy.email": email }; // Correctly access nested field with quotes
+            const result = await apartmentCollections.find(filter).toArray();
+            res.send(result);
+        });
+
+        // Update a apartment
+        app.patch('/apartments/:id', async (req, res) => {
+            const id = req.params.id;
+            const filter = { _id: new ObjectId(id) };
+            const updateData = req.body;
+
+            // Remove _id from updateData if it exists
+            delete updateData._id;
+
+            const updateDoc = {
+                $set: {
+                    ...updateData,
+                },
+            };
+            try {
+
+                const result = await apartmentCollections.updateOne(filter, updateDoc);
+                res.send(result);
+            } catch (error) {
+                console.error('Error updating apartment:', error);
+                res.status(500).json({ error: 'Failed to update apartment' });
+            }
+        });
+
+
 
         // Post a Blog
         app.post('/blogs', async (req, res) => {
