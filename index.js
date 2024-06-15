@@ -295,7 +295,7 @@ async function run() {
         // Get Review
         app.get('/reviews', async (req, res) => {
             const result = await reviewsCollections.find().toArray();
-            res.send(res)
+            res.send(result)
         })
 
 
