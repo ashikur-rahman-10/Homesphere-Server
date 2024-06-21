@@ -70,17 +70,17 @@ async function run() {
         })
 
         // Update User
-        app.put('/users/:email', async (req, res) => {
+        app.patch('/users/:email', async (req, res) => {
             const email = req.params.email;
             const filter = { email: email };
             const updatedinfo = req.body
+            console.log(updatedinfo);
 
             const options = {};
             // Specify the update to set a value for the fields
             const updateDoc = {
                 $set: {
-                    phone: updatedinfo.phone,
-                    address: updatedinfo.address
+                    ...updatedinfo
                 },
             };
             // Update the first document that matches the filter
