@@ -145,6 +145,33 @@ async function run() {
             }
         });
 
+        // Change apartment postStatus
+        app.patch('/apartments/:id', async (req, res) => {
+            const id = req.params.id;
+            const filter = { _id: new ObjectId(id) }
+            const newStatus = req.body
+
+            const updateDoc = {
+                $set: {
+                    postStatus: newStatus?.postStatus
+                },
+            };
+            const result = await apartmentCollections.updateOne(filter, updateDoc)
+            res.send(result)
+        })
+
+
+        // Delete Apartment post
+        app.delete('/apartments/:id', async (req, res) => {
+            const id = req.params.id;
+            const filter = {
+                _id: new ObjectId(id)
+            }
+
+            const result = await apartmentCollections.deleteOne(filter)
+            res.send(result)
+        })
+
 
 
         // Post a Blog
@@ -238,32 +265,21 @@ async function run() {
             res.send(result)
         })
 
-        // Change apartment postStatus
-        app.patch('/apartments/:id', async (req, res) => {
+        // change appointment status
+        app.patch('/appointments/:id', async (req, res) => {
             const id = req.params.id;
             const filter = { _id: new ObjectId(id) }
             const newStatus = req.body
-
             const updateDoc = {
                 $set: {
-                    postStatus: newStatus?.postStatus
+                    appointmentStatus: newStatus?.appointmentStatus
                 },
             };
-            const result = await apartmentCollections.updateOne(filter, updateDoc)
+            const result = await appointmentsCollections.updateOne(filter, updateDoc)
             res.send(result)
         })
 
 
-        // Delete Apartment post
-        app.delete('/apartments/:id', async (req, res) => {
-            const id = req.params.id;
-            const filter = {
-                _id: new ObjectId(id)
-            }
-
-            const result = await apartmentCollections.deleteOne(filter)
-            res.send(result)
-        })
         // Get appointment time slot
         app.get("/appointments/booked-time-slots", async (req, res) => {
             try {
@@ -281,9 +297,6 @@ async function run() {
                 res.status(500).json({ message: "Internal server error" });
             }
         });
-
-
-
 
         // Post a Review
         app.post('/reviews', async (req, res) => {
