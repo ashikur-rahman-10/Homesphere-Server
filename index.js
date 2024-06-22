@@ -279,6 +279,15 @@ async function run() {
             res.send(result)
         })
 
+        // Get appointment by email
+
+        app.get('/appointments/:email', async (req, res) => {
+            const email = req.params.email;
+            const filter = { email: email }
+            const result = await appointmentsCollections.find(filter).toArray()
+            res.send(result)
+        })
+
 
         // Get appointment time slot
         app.get("/appointments/booked-time-slots", async (req, res) => {
