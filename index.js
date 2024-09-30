@@ -1,5 +1,6 @@
 const express = require('express');
 const cors = require('cors');
+const jwt = require('jsonwebtoken');
 require('dotenv').config()
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const app = express()
@@ -17,6 +18,22 @@ app.get('/', (req, res) => {
     res.send("Server is running......")
 })
 
+// Verify JWT
+const VerifyJwt = (req, res, next) => {
+    const authorization = req.headers.authorization
+    if (!authorization) {
+        return res.status(401).send({ error: true, message: 'Unauthorized access' });
+    }
+    const token = authorization.split(' ')[1];
+    jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
+        if (err) {
+            return res.status(401).send({ error: true, message: 'Unauthorized access' });
+        }
+        req.decoded = decoded;
+        next()
+    })
+}
+
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.a46jnic.mongodb.net/?retryWrites=true&w=majority`;
 
 // Create a MongoClient with a MongoClientOptions object to set the Stable API version
@@ -27,7 +44,6 @@ const client = new MongoClient(uri, {
         deprecationErrors: true,
     }
 });
-
 async function run() {
     try {
         // Connect the client to the server (optional starting in v4.7)
@@ -39,6 +55,28 @@ async function run() {
         const reviewsCollections = client.db("AbacusDB").collection("reviews");
         const appointmentsCollections = client.db("AbacusDB").collection("appointments");
         const favoritesCollections = client.db("AbacusDB").collection("favorites");
+
+
+        // JWT
+        app.post('/jwt', async (req, res) => {
+            const user = req.body;
+            const token = jwt.sign(user, process.env.JWT_SECRET, { expiresIn: '1h' })
+            res.send({ token })
+        })
+
+
+        // VerifyAdmin
+        const VerifyAdmin = async (req, res, next) => {
+            const email = req.decoded.email;
+            const query = { email: email }
+            const user = await userCollections.findOne(query)
+            if (user.role !== "admin") {
+                return res.status(401).send({ error: true, message: 'Unauthorized access' });
+            }
+
+            next()
+        }
+
 
         // Users API
         app.post('/users', async (req, res) => {
@@ -69,8 +107,33 @@ async function run() {
             res.send(result)
         })
 
+        // promote or demote as admin
+
+        app.patch('/users/role/:id', VerifyJwt, VerifyAdmin, async (req, res) => {
+            const id = req.params.id;
+            const { role } = req.body;
+
+            const filter = { _id: new ObjectId(id) };
+            const updateDoc = {
+                $set: { role: role },
+            };
+
+            try {
+                const result = await userCollections.updateOne(filter, updateDoc);
+
+                if (result.modifiedCount > 0) {
+                    res.send({ success: true, message: "User role updated successfully" });
+                } else {
+                    res.send({ success: false, message: "User not found or role is already set" });
+                }
+            } catch (error) {
+                res.status(500).send({ success: false, message: "Error updating user role", error });
+            }
+        });
+
+
         // Update User
-        app.patch('/users/:email', async (req, res) => {
+        app.patch('/users/:email', VerifyJwt, async (req, res) => {
             const email = req.params.email;
             const filter = { email: email };
             const updatedinfo = req.body
@@ -94,7 +157,7 @@ async function run() {
 
 
         // Post a Apartment
-        app.post('/apartments', async (req, res) => {
+        app.post('/apartments', VerifyJwt, async (req, res) => {
             const apartment = req.body;
             const result = await apartmentCollections.insertOne(apartment);
             res.send(result)
@@ -114,7 +177,7 @@ async function run() {
             res.send(result)
         })
         // Get Apartment by email
-        app.get('/apartments/email/:email', async (req, res) => {
+        app.get('/apartments/email/:email', VerifyJwt, async (req, res) => {
             const email = req.params.email;
             const filter = { "soldBy.email": email }; // Correctly access nested field with quotes
             const result = await apartmentCollections.find(filter).toArray();
@@ -122,7 +185,7 @@ async function run() {
         });
 
         // Update a apartment
-        app.patch('/apartments/:id', async (req, res) => {
+        app.patch('/apartments/:id', VerifyJwt, async (req, res) => {
             const id = req.params.id;
             const filter = { _id: new ObjectId(id) };
             const updateData = req.body;
@@ -146,7 +209,7 @@ async function run() {
         });
 
         // Change apartment postStatus
-        app.patch('/apartments/:id', async (req, res) => {
+        app.patch('/apartments/:id', VerifyJwt, VerifyAdmin, async (req, res) => {
             const id = req.params.id;
             const filter = { _id: new ObjectId(id) }
             const newStatus = req.body
@@ -162,7 +225,7 @@ async function run() {
 
 
         // Delete Apartment post
-        app.delete('/apartments/:id', async (req, res) => {
+        app.delete('/apartments/:id', VerifyJwt, async (req, res) => {
             const id = req.params.id;
             const filter = {
                 _id: new ObjectId(id)
@@ -175,7 +238,7 @@ async function run() {
 
 
         // Post a Blog
-        app.post('/blogs', async (req, res) => {
+        app.post('/blogs', VerifyJwt, VerifyAdmin, async (req, res) => {
             const blog = req.body;
             const result = await blogsCollections.insertOne(blog);
             res.send(result)
@@ -188,7 +251,7 @@ async function run() {
         })
 
         // Delete a blog
-        app.delete('/blogs/:id', async (req, res) => {
+        app.delete('/blogs/:id', VerifyJwt, VerifyAdmin, async (req, res) => {
             const id = req.params.id;
             const filter = { _id: new ObjectId(id) }
             const result = await blogsCollections.deleteOne(filter)
@@ -197,7 +260,7 @@ async function run() {
 
 
         // Update a blog
-        app.patch('/blogs/:id', async (req, res) => {
+        app.patch('/blogs/:id', VerifyJwt, VerifyAdmin, async (req, res) => {
             const id = req.params.id;
             const updateBlog = req.body
             const filter = { _id: new ObjectId(id) }
@@ -220,20 +283,20 @@ async function run() {
         })
 
         // post a favorite apartment
-        app.post('/favorites', async (req, res) => {
+        app.post('/favorites', VerifyJwt, async (req, res) => {
             const fav = req.body;
             const result = await favoritesCollections.insertOne(fav);
             res.send(result)
         })
 
         // Get favorite apartment
-        app.get('/favorites', async (req, res) => {
+        app.get('/favorites', VerifyJwt, async (req, res) => {
             const result = await favoritesCollections.find().toArray();
             res.send(result)
         })
 
         // find favorite by email
-        app.get('/favorites/:email', async (req, res) => {
+        app.get('/favorites/:email', VerifyJwt, async (req, res) => {
             const email = req.params.email;
             const filter = {
                 userEmail: email
@@ -243,7 +306,7 @@ async function run() {
         })
 
         // Delete a favorite
-        app.delete('/favorites/:id', async (req, res) => {
+        app.delete('/favorites/:id', VerifyJwt, async (req, res) => {
             const id = req.params.id; // Access the 'id' parameter correctly
             const filter = {
                 _id: new ObjectId(id)
@@ -253,20 +316,20 @@ async function run() {
         });
 
         // Post a Appointment
-        app.post('/appointments', async (req, res) => {
+        app.post('/appointments', VerifyJwt, async (req, res) => {
             const appointment = req.body;
             const result = await appointmentsCollections.insertOne(appointment);
             res.send(result)
         })
 
         // Get Appointments
-        app.get('/appointments', async (req, res) => {
+        app.get('/appointments', VerifyJwt, async (req, res) => {
             const result = await appointmentsCollections.find().toArray();
             res.send(result)
         })
 
         // change appointment status
-        app.patch('/appointments/:id', async (req, res) => {
+        app.patch('/appointments/:id', VerifyJwt, VerifyAdmin, async (req, res) => {
             const id = req.params.id;
             const filter = { _id: new ObjectId(id) }
             const newStatus = req.body
@@ -281,7 +344,7 @@ async function run() {
 
         // Get appointment by email
 
-        app.get('/appointments/:email', async (req, res) => {
+        app.get('/appointments/:email', VerifyJwt, async (req, res) => {
             const email = req.params.email;
             const filter = { email: email }
             const result = await appointmentsCollections.find(filter).toArray()
@@ -290,7 +353,7 @@ async function run() {
 
 
         // Get appointment time slot
-        app.get("/appointments/booked-time-slots", async (req, res) => {
+        app.get("/appointments/booked-time-slots", VerifyJwt, async (req, res) => {
             try {
                 const { date } = req.query;
                 const selectedDate = new Date(date);
@@ -308,7 +371,7 @@ async function run() {
         });
 
         // Post a Review
-        app.post('/reviews', async (req, res) => {
+        app.post('/reviews', VerifyJwt, async (req, res) => {
             const review = req.body;
             const result = await reviewsCollections.insertOne(review);
             res.send(result)
