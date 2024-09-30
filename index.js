@@ -316,14 +316,14 @@ async function run() {
         });
 
         // Post a Appointment
-        app.post('/appointments', VerifyJwt, async (req, res) => {
+        app.post('/appointments', async (req, res) => {
             const appointment = req.body;
             const result = await appointmentsCollections.insertOne(appointment);
             res.send(result)
         })
 
         // Get Appointments
-        app.get('/appointments', VerifyJwt, async (req, res) => {
+        app.get('/appointments', async (req, res) => {
             const result = await appointmentsCollections.find().toArray();
             res.send(result)
         })
@@ -344,7 +344,7 @@ async function run() {
 
         // Get appointment by email
 
-        app.get('/appointments/:email', VerifyJwt, async (req, res) => {
+        app.get('/appointments/:email', async (req, res) => {
             const email = req.params.email;
             const filter = { email: email }
             const result = await appointmentsCollections.find(filter).toArray()
@@ -353,7 +353,7 @@ async function run() {
 
 
         // Get appointment time slot
-        app.get("/appointments/booked-time-slots", VerifyJwt, async (req, res) => {
+        app.get("/appointments/booked-time-slots", async (req, res) => {
             try {
                 const { date } = req.query;
                 const selectedDate = new Date(date);
